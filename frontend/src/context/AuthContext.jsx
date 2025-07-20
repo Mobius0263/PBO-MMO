@@ -1,4 +1,3 @@
-jsx
 import { createContext, useState, useEffect } from 'react';
 import { getCurrentUser } from '../services/authService';
 

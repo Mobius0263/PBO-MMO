@@ -10,7 +10,7 @@ type User struct {
     ID           primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
     Nama         string             `bson:"nama" json:"nama"`
     Email        string             `bson:"email" json:"email"`
-    Password     string             `bson:"password" json:"-"` // Password tidak di-expose ke JSON
+    Password     string             `bson:"password" json:"password,omitempty"` // Allow JSON parsing for registration
     Role         string             `bson:"role" json:"role,omitempty"`
     Bio          string             `bson:"bio" json:"bio,omitempty"`
     ProfileImage string             `bson:"profileImage" json:"profileImage,omitempty"`

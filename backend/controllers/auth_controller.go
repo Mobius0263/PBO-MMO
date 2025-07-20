@@ -2,6 +2,7 @@ package controllers
 
 import (
     "context"
+    "log"
     "time"
 
     "github.com/gofiber/fiber/v2"
@@ -19,8 +20,12 @@ func Register(c *fiber.Ctx) error {
 
     var user models.User
     if err := c.BodyParser(&user); err != nil {
+        log.Printf("BodyParser error: %v", err)
         return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Request tidak valid"})
     }
+    
+    log.Printf("Received registration data: %+v", user)
+    log.Printf("Password length received: %d", len(user.Password))
 
     // Check if email already exists
     var existingUser models.User
@@ -53,8 +58,11 @@ func Register(c *fiber.Ctx) error {
 
     _, err = config.UserCollectionRef.InsertOne(ctx, user)
     if err != nil {
+        log.Printf("Database insertion error: %v", err)
         return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Gagal menyimpan user"})
     }
+    
+    log.Printf("User registered successfully: %s", user.Email)
 
     return c.Status(fiber.StatusCreated).JSON(fiber.Map{
         "message": "Registrasi berhasil",
@@ -62,6 +70,7 @@ func Register(c *fiber.Ctx) error {
             "id":    user.ID,
             "nama":  user.Nama,
             "email": user.Email,
+            "role":  user.Role,
         },
     })
 }
@@ -76,20 +85,29 @@ func Login(c *fiber.Ctx) error {
     }
 
     if err := c.BodyParser(&input); err != nil {
+        log.Printf("Login BodyParser error: %v", err)
         return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Request tidak valid"})
     }
+    
+    log.Printf("Login attempt for email: %s", input.Email)
+    log.Printf("Password length received: %d", len(input.Password))
 
     var user models.User
     err := config.UserCollectionRef.FindOne(ctx, bson.M{"email": input.Email}).Decode(&user)
     if err != nil {
+        log.Printf("User not found for email %s: %v", input.Email, err)
         return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Email atau password salah"})
     }
 
     // Verify password
+    log.Printf("Checking password for user: %s", user.Email)
     match := utils.CheckPasswordHash(input.Password, user.Password)
     if !match {
+        log.Printf("Password mismatch for user: %s", user.Email)
         return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Email atau password salah"})
     }
+    
+    log.Printf("Login successful for user: %s", user.Email)
 
     // Generate JWT
     token, err := utils.GenerateJWT(user.ID.Hex(), user.Email)

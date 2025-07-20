@@ -1,10 +1,14 @@
 package utils
 
 import (
+    "errors"
     "os"
+    "strings"
     "time"
 
+    "github.com/gofiber/fiber/v2"
     "github.com/golang-jwt/jwt/v5"
+    "go.mongodb.org/mongo-driver/bson/primitive"
     "golang.org/x/crypto/bcrypt"
 )
 
@@ -44,4 +48,51 @@ func GenerateJWT(userID string, email string) (string, error) {
     tokenString, err := token.SignedString([]byte(secret))
     
     return tokenString, err
+}
+
+// GetUserIDFromToken extracts user ID from JWT token in fiber context
+func GetUserIDFromToken(c *fiber.Ctx) (primitive.ObjectID, error) {
+    // Get token from Authorization header
+    authHeader := c.Get("Authorization")
+    if authHeader == "" {
+        return primitive.NilObjectID, errors.New("authorization header missing")
+    }
+
+    // Extract token from "Bearer <token>"
+    tokenString := strings.Replace(authHeader, "Bearer ", "", 1)
+    if tokenString == authHeader {
+        return primitive.NilObjectID, errors.New("invalid authorization header format")
+    }
+
+    // Get JWT secret
+    secret := os.Getenv("JWT_SECRET")
+    if secret == "" {
+        secret = "your_super_secret_key_for_jwt_should_be_long_and_complex"
+    }
+
+    // Parse and validate token
+    token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+        if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+            return nil, errors.New("invalid signing method")
+        }
+        return []byte(secret), nil
+    })
+
+    if err != nil {
+        return primitive.NilObjectID, err
+    }
+
+    // Extract claims
+    if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+        if userIDStr, exists := claims["id"].(string); exists {
+            userID, err := primitive.ObjectIDFromHex(userIDStr)
+            if err != nil {
+                return primitive.NilObjectID, errors.New("invalid user ID format")
+            }
+            return userID, nil
+        }
+        return primitive.NilObjectID, errors.New("user ID not found in token")
+    }
+
+    return primitive.NilObjectID, errors.New("invalid token")
 }

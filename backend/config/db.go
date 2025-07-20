@@ -12,8 +12,9 @@ import (
 )
 
 var (
-    MongoClient       *mongo.Client
-    UserCollectionRef *mongo.Collection
+    MongoClient         *mongo.Client
+    UserCollectionRef   *mongo.Collection
+    MeetingCollectionRef *mongo.Collection
 )
 
 func ConnectDB() {
@@ -56,10 +57,16 @@ func ConnectDB() {
         log.Println("Using default database name:", dbName)
     }
 
-    UserCollectionRef = MongoClient.Database(dbName).Collection(os.Getenv("USER_COLLECTION"))
-    if UserCollectionRef == nil {
-        log.Println("Warning: User collection reference is nil")
-        UserCollectionRef = MongoClient.Database(dbName).Collection("users")
+    userCollectionName := os.Getenv("USER_COLLECTION")
+    if userCollectionName == "" {
+        userCollectionName = "users"
+        log.Println("Using default user collection name:", userCollectionName)
+    }
+    UserCollectionRef = MongoClient.Database(dbName).Collection(userCollectionName)
+
+    MeetingCollectionRef = MongoClient.Database(dbName).Collection("meetings")
+    if MeetingCollectionRef == nil {
+        log.Println("Warning: Meeting collection reference is nil")
     }
 
     log.Println("Connected to MongoDB")
